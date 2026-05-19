@@ -1,6 +1,8 @@
 {
   "version": 2,
-  "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api/$1" }
-  ]
+  "functions": {
+    "api/stock.js": {
+      "maxDuration": 30
+    }
+  }
 }
