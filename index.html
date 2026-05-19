@@ -416,7 +416,7 @@
   // ── Formatters ──────────────────────────────────────────────
   function fmtPrice(v) {
     if (v == null || isNaN(v)) return '-';
-    return '¥' + Number(v).toLocaleString('ja-JP', { maximumFractionDigits: 1 });
+    return Number(v).toLocaleString('ja-JP', { maximumFractionDigits: 1 });
   }
 
   function fmtVolume(v) {
@@ -602,7 +602,7 @@
   }
 
   // ── Stats update ──────────────────────────────────────────────
-  function updateStats(quotes, code) {
+  function updateStats(quotes, code, name) {
     if (!quotes.length) return;
 
     const latest = quotes[quotes.length - 1];
@@ -611,7 +611,7 @@
     const allLow  = Math.min(...quotes.map(q => +q.low));
     const totalVol = quotes.reduce((s, q) => s + (+q.volume || 0), 0);
 
-    $('stockName').textContent    = `銘柄 ${code}`;
+    $('stockName').textContent    = name || `銘柄 ${code}`;
     $('stockCodeBadge').textContent = code;
     $('currentPrice').textContent = fmtPrice(latest.close);
 
@@ -653,7 +653,7 @@
 
       currentCode = code;
       setState('stock');
-      updateStats(quotes, code);
+      updateStats(quotes, code, data.name);
       buildPriceChart(quotes);
       buildVolumeChart(quotes);
     } catch (e) {
