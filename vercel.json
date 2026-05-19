@@ -4,11 +4,5 @@
     "api/stock.js": {
       "maxDuration": 30
     }
-  },
-  "env": {
-    "JQUANTS_EMAIL":    "@jquants_email",
-    "JQUANTS_PASSWORD": "@jquants_password",
-    "SUPABASE_URL":     "@supabase_url",
-    "SUPABASE_KEY":     "@supabase_key"
   }
 }
