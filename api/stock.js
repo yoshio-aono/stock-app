@@ -36,8 +36,6 @@ async function fetchCompanyName(code) {
   if (!res.ok) return null;
   const data = await res.json();
   
-  // デバッグ用ログ
-  console.log('company name raw:', JSON.stringify(data).substring(0, 300));
   
   const info = (data.info || data.data || data.items || [])[0];
   return info?.CoName ?? null;
