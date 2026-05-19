@@ -1,695 +1,154 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>株価</title>
-  <style>
-    :root {
-      --bg: #000;
-      --surface: #1c1c1e;
-      --surface2: #2c2c2e;
-      --border: #38383a;
-      --text: #fff;
-      --text2: rgba(235,235,245,0.8);
-      --text3: rgba(235,235,245,0.55);
-      --green: #34c759;
-      --red: #ff3b30;
-      --blue: #0a84ff;
-    }
+const { createClient } = require('@supabase/supabase-js');
 
-    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+// Supabase client
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_KEY
+);
 
-    html, body {
-      height: 100%;
-      background: var(--bg);
-      color: var(--text);
-      font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
-      -webkit-font-smoothing: antialiased;
-      overflow-x: hidden;
-    }
+// ── J-Quants price fetch ──────────────────────────────────────
+async function fetchJQuants(code, from, to) {
+  const apiKey = process.env.JQUANTS_API_KEY;
+  if (!apiKey) throw new Error('JQUANTS_API_KEY が設定されていません');
 
-    .app {
-      max-width: 430px;
-      margin: 0 auto;
-      min-height: 100vh;
-      padding-bottom: 40px;
-    }
+  const url = `https://api.jquants.com/v2/equities/bars/daily?code=${code}&from=${from}&to=${to}`;
 
-    /* ── Search bar ── */
-    .search-bar {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 12px 16px;
-      position: sticky;
-      top: 0;
-      background: rgba(0,0,0,0.85);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
-      border-bottom: 0.5px solid var(--border);
-      z-index: 100;
-    }
+  const res = await fetch(url, {
+    headers: { 'x-api-key': apiKey }
+  });
 
-    .search-input-wrap {
-      flex: 1;
-      display: flex;
-      align-items: center;
-      background: var(--surface2);
-      border-radius: 10px;
-      padding: 8px 12px;
-      gap: 8px;
-    }
-
-    .search-icon { color: var(--text3); font-size: 15px; }
-
-    .search-input {
-      flex: 1;
-      background: none;
-      border: none;
-      outline: none;
-      color: var(--text);
-      font-size: 17px;
-      caret-color: var(--blue);
-    }
-
-    .search-input::placeholder { color: var(--text3); }
-
-    .search-btn {
-      background: none;
-      border: none;
-      color: var(--blue);
-      font-size: 17px;
-      font-weight: 500;
-      cursor: pointer;
-      padding: 8px 0;
-      min-width: 36px;
-    }
-
-    /* ── Welcome ── */
-    .welcome {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: 100px 32px 60px;
-      text-align: center;
-    }
-
-    .welcome-icon { font-size: 56px; margin-bottom: 20px; opacity: 0.4; }
-
-    .welcome-title {
-      font-size: 22px;
-      font-weight: 700;
-      color: var(--text2);
-      margin-bottom: 10px;
-    }
-
-    .welcome-desc { font-size: 15px; color: var(--text3); line-height: 1.6; }
-
-    .welcome-examples {
-      margin-top: 24px;
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-      justify-content: center;
-    }
-
-    .example-chip {
-      background: var(--surface);
-      border: 0.5px solid var(--border);
-      border-radius: 20px;
-      padding: 6px 14px;
-      font-size: 13px;
-      color: var(--text3);
-      cursor: pointer;
-      transition: background 0.15s;
-    }
-
-    .example-chip:active { background: var(--surface2); }
-
-    /* ── Loading ── */
-    .loading-overlay {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 80px 16px;
-      color: var(--text3);
-      font-size: 16px;
-      gap: 12px;
-    }
-
-    .spinner {
-      width: 22px;
-      height: 22px;
-      border: 2px solid var(--border);
-      border-top-color: var(--blue);
-      border-radius: 50%;
-      animation: spin 0.75s linear infinite;
-      flex-shrink: 0;
-    }
-
-    @keyframes spin { to { transform: rotate(360deg); } }
-
-    /* ── Error ── */
-    .error-msg {
-      margin: 20px 16px;
-      padding: 14px 16px;
-      background: rgba(255,59,48,0.12);
-      border: 0.5px solid rgba(255,59,48,0.35);
-      border-radius: 12px;
-      color: var(--red);
-      font-size: 15px;
-      line-height: 1.5;
-    }
-
-    /* ── Stock content ── */
-    .stock-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      padding: 20px 16px 6px;
-    }
-
-    .stock-name { font-size: 20px; font-weight: 700; }
-
-    .stock-code-badge {
-      background: var(--surface2);
-      color: var(--text3);
-      font-size: 12px;
-      font-weight: 600;
-      padding: 4px 10px;
-      border-radius: 6px;
-      letter-spacing: 0.5px;
-      margin-top: 2px;
-    }
-
-    .price-section { padding: 4px 16px 16px; }
-
-    .current-price {
-      font-size: 46px;
-      font-weight: 700;
-      letter-spacing: -1.5px;
-      line-height: 1.1;
-    }
-
-    .price-change { font-size: 16px; font-weight: 500; margin-top: 4px; }
-    .price-change.up   { color: var(--green); }
-    .price-change.down { color: var(--red); }
-    .price-change.flat { color: var(--text3); }
-
-    /* ── Period selector ── */
-    .period-selector {
-      display: flex;
-      padding: 0 12px 8px;
-      gap: 2px;
-    }
-
-    .period-btn {
-      flex: 1;
-      background: none;
-      border: none;
-      color: var(--text3);
-      font-size: 14px;
-      font-weight: 600;
-      padding: 8px 2px;
-      cursor: pointer;
-      border-radius: 8px;
-      transition: background 0.15s, color 0.15s;
-    }
-
-    .period-btn.active {
-      color: var(--blue);
-      background: rgba(10,132,255,0.15);
-    }
-
-    /* ── Charts ── */
-    .chart-wrap {
-      padding: 0 8px;
-      position: relative;
-    }
-
-    .price-chart-wrap { height: 230px; }
-    .volume-chart-wrap { height: 72px; margin-top: 6px; }
-
-    canvas { width: 100% !important; }
-
-    /* ── Stats grid ── */
-    .section-label {
-      padding: 16px 16px 6px;
-      font-size: 12px;
-      color: var(--text3);
-      text-transform: uppercase;
-      letter-spacing: 0.6px;
-      font-weight: 500;
-    }
-
-    .stats-grid {
-      margin: 0 16px;
-      background: var(--surface);
-      border-radius: 12px;
-      overflow: hidden;
-    }
-
-    .stats-row {
-      display: flex;
-      border-bottom: 0.5px solid var(--border);
-    }
-
-    .stats-row:last-child { border-bottom: none; }
-
-    .stat-item {
-      flex: 1;
-      padding: 12px 16px;
-      border-right: 0.5px solid var(--border);
-    }
-
-    .stat-item:last-child { border-right: none; }
-
-    .stat-label {
-      font-size: 11px;
-      color: var(--text3);
-      font-weight: 500;
-      margin-bottom: 4px;
-    }
-
-    .stat-value { font-size: 16px; font-weight: 600; }
-
-    /* Data source tag */
-    .data-source {
-      text-align: center;
-      padding: 20px 16px 0;
-      font-size: 11px;
-      color: var(--text3);
-    }
-
-    /* ── Utility ── */
-    .hidden { display: none !important; }
-  </style>
-</head>
-<body>
-<div class="app">
-  <!-- Search -->
-  <div class="search-bar">
-    <div class="search-input-wrap">
-      <span class="search-icon">⌕</span>
-      <input
-        id="codeInput"
-        class="search-input"
-        type="text"
-        inputmode="numeric"
-        placeholder="銘柄コード（例: 7203）"
-        maxlength="5"
-        autocomplete="off"
-      >
-    </div>
-    <button class="search-btn" id="searchBtn">検索</button>
-  </div>
-
-  <!-- Welcome -->
-  <div id="welcome" class="welcome">
-    <div class="welcome-icon">📈</div>
-    <div class="welcome-title">株価チャート</div>
-    <div class="welcome-desc">銘柄コードを入力して<br>日本株の株価を確認できます</div>
-    <div class="welcome-examples">
-      <span class="example-chip" data-code="7203">7203 トヨタ</span>
-      <span class="example-chip" data-code="6758">6758 ソニー</span>
-      <span class="example-chip" data-code="9984">9984 ソフトバンクG</span>
-      <span class="example-chip" data-code="7974">7974 任天堂</span>
-    </div>
-  </div>
-
-  <!-- Loading -->
-  <div id="loading" class="loading-overlay hidden">
-    <div class="spinner"></div>
-    読み込み中...
-  </div>
-
-  <!-- Error -->
-  <div id="error" class="error-msg hidden"></div>
-
-  <!-- Stock content -->
-  <div id="stockContent" class="hidden">
-    <div class="stock-header">
-      <div class="stock-name" id="stockName">-</div>
-      <div class="stock-code-badge" id="stockCodeBadge">-</div>
-    </div>
-
-    <div class="price-section">
-      <div class="current-price" id="currentPrice">-</div>
-      <div class="price-change" id="priceChange">-</div>
-    </div>
-
-    <div class="period-selector">
-      <button class="period-btn" data-period="1w">1週</button>
-      <button class="period-btn active" data-period="1m">1ヶ月</button>
-      <button class="period-btn" data-period="3m">3ヶ月</button>
-      <button class="period-btn" data-period="1y">1年</button>
-    </div>
-
-    <div class="chart-wrap price-chart-wrap">
-      <canvas id="priceChart"></canvas>
-    </div>
-
-    <div class="chart-wrap volume-chart-wrap">
-      <canvas id="volumeChart"></canvas>
-    </div>
-
-    <div class="section-label">詳細情報</div>
-    <div class="stats-grid">
-      <div class="stats-row">
-        <div class="stat-item">
-          <div class="stat-label">始値</div>
-          <div class="stat-value" id="statOpen">-</div>
-        </div>
-        <div class="stat-item">
-          <div class="stat-label">終値</div>
-          <div class="stat-value" id="statClose">-</div>
-        </div>
-      </div>
-      <div class="stats-row">
-        <div class="stat-item">
-          <div class="stat-label">期間高値</div>
-          <div class="stat-value" id="statHigh">-</div>
-        </div>
-        <div class="stat-item">
-          <div class="stat-label">期間安値</div>
-          <div class="stat-value" id="statLow">-</div>
-        </div>
-      </div>
-      <div class="stats-row">
-        <div class="stat-item">
-          <div class="stat-label">出来高合計</div>
-          <div class="stat-value" id="statVolume">-</div>
-        </div>
-        <div class="stat-item">
-          <div class="stat-label">取引日数</div>
-          <div class="stat-value" id="statDays">-</div>
-        </div>
-      </div>
-    </div>
-
-    <div class="data-source">データ提供: J-Quants API</div>
-  </div>
-</div>
-
-<!-- Chart.js + Financial plugin -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/luxon@3.4.4/build/global/luxon.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon@1.3.1/dist/chartjs-adapter-luxon.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chartjs-chart-financial@0.1.1/dist/chartjs-chart-financial.min.js"></script>
-
-<script>
-  const GREEN   = '#34c759';
-  const RED     = '#ff3b30';
-  const BLUE    = '#0a84ff';
-  const TEXT3   = 'rgba(235,235,245,0.55)';
-  const GRID    = 'rgba(255,255,255,0.07)';
-
-  let priceChart   = null;
-  let volumeChart  = null;
-  let currentCode  = null;
-  let currentPeriod = '1m';
-
-  const $ = id => document.getElementById(id);
-
-  // ── Formatters ──────────────────────────────────────────────
-  function fmtPrice(v) {
-    if (v == null || isNaN(v)) return '-';
-    return Number(v).toLocaleString('ja-JP', { maximumFractionDigits: 1 });
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`株価取得失敗 (${res.status}): ${body}`);
   }
 
-  function fmtVolume(v) {
-    if (v == null || isNaN(v)) return '-';
-    if (v >= 1e8) return (v / 1e8).toFixed(1) + '億';
-    if (v >= 1e4) return Math.round(v / 1e4) + '万';
-    return Number(v).toLocaleString('ja-JP');
+  const data = await res.json();
+  return data.data || [];
+}
+
+// ── Company name fetch ────────────────────────────────────────
+async function fetchCompanyName(code) {
+  const apiKey = process.env.JQUANTS_API_KEY;
+  const res = await fetch(
+    `https://api.jquants.com/v2/equities/master?code=${code}`,
+    { headers: { 'x-api-key': apiKey } }
+  );
+  if (!res.ok) return null;
+  const data = await res.json();
+  const info = (data.info || data.data || [])[0];
+  return info?.CompanyName ?? info?.Name ?? null;
+}
+
+// ── Date helpers ──────────────────────────────────────────────
+// J-Quants Free プラン制限：直近12週間は取得不可
+// to = 今日から91日前（13週前）、from = to から period 分遡る
+function getPeriodDates(period) {
+  const periodDaysMap = { '1w': 7, '1m': 30, '3m': 90, '1y': 365 };
+  const periodDays    = periodDaysMap[period] || 30;
+
+  const fmt = d => d.toISOString().split('T')[0];
+
+  const to = new Date();
+  to.setDate(to.getDate() - 91);       // 今日から13週前
+
+  const from = new Date(to);
+  from.setDate(from.getDate() - periodDays);
+
+  return { from: fmt(from), to: fmt(to) };
+}
+
+// ── Supabase cache helpers ────────────────────────────────────
+async function queryCache(code, from, to) {
+  const { data, error } = await supabase
+    .from('stock_prices')
+    .select('code, date, open, high, low, close, volume')
+    .eq('code', code)
+    .gte('date', from)
+    .lte('date', to)
+    .order('date', { ascending: true });
+
+  if (error) console.error('Supabase query error:', error);
+  return data || [];
+}
+
+async function upsertCache(rows) {
+  const { error } = await supabase
+    .from('stock_prices')
+    .upsert(rows, { onConflict: 'code,date' });
+
+  if (error) console.error('Supabase upsert error:', error);
+}
+
+// ── Transform J-Quants response rows ─────────────────────────
+function transformRows(rawQuotes, code) {
+  return rawQuotes.map(q => ({
+    code:   code,
+    date:   q.Date,
+    open:   q.AdjO,
+    high:   q.AdjH,
+    low:    q.AdjL,
+    close:  q.AdjC,
+    volume: q.AdjVo
+  }));
+}
+
+// ── Main handler ──────────────────────────────────────────────
+module.exports = async (req, res) => {
+  res.setHeader('Access-Control-Allow-Origin',  '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.setHeader('Cache-Control', 'no-cache');
+
+  if (req.method === 'OPTIONS') return res.status(200).end();
+
+  const { code, period = '1m' } = req.query;
+
+  if (!code) {
+    return res.status(400).json({ error: '銘柄コードを入力してください' });
   }
 
-  // ── UI State ─────────────────────────────────────────────────
-  function setState(state) {
-    ['welcome', 'loading', 'error', 'stockContent'].forEach(id => {
-      $(id).classList.toggle('hidden', id !== state.replace('stock', 'stockContent') && id !== state);
-    });
-    // Simpler explicit toggle
-    $('welcome').classList.toggle('hidden',      state !== 'welcome');
-    $('loading').classList.toggle('hidden',      state !== 'loading');
-    $('error').classList.toggle('hidden',        state !== 'error');
-    $('stockContent').classList.toggle('hidden', state !== 'stock');
+  // Normalize to 4-digit numeric code
+  const normalizedCode = code.replace(/\D/g, '').padStart(4, '0').substring(0, 4);
+  if (normalizedCode.length !== 4 || normalizedCode === '0000') {
+    return res.status(400).json({ error: '正しい銘柄コード（4桁）を入力してください' });
   }
 
-  // ── Time unit per period ─────────────────────────────────────
-  function timeUnit(period) {
-    return { '1w': 'day', '1m': 'week', '3m': 'month', '1y': 'month' }[period] || 'week';
-  }
+  const { from, to } = getPeriodDates(period);
 
-  // ── Price (candlestick) chart ─────────────────────────────────
-  function buildPriceChart(quotes) {
-    const ctx = $('priceChart');
-    if (priceChart) { priceChart.destroy(); priceChart = null; }
+  try {
+    // 1. Check Supabase cache
+    let quotes = await queryCache(normalizedCode, from, to);
 
-    const candleData = quotes.map(q => ({
-      x: new Date(q.date).getTime(),
-      o: +q.open,
-      h: +q.high,
-      l: +q.low,
-      c: +q.close
-    }));
+    // 2. キャッシュが to 日付付近まであるか確認（3日以内を許容）
+    const toMinus3 = new Date(to);
+    toMinus3.setDate(toMinus3.getDate() - 3);
+    const hasRecent = quotes.some(r => r.date >= toMinus3.toISOString().split('T')[0]);
 
-    priceChart = new Chart(ctx, {
-      type: 'candlestick',
-      data: {
-        datasets: [{
-          label: '株価',
-          data: candleData,
-          color: {
-            up:        GREEN,
-            down:      RED,
-            unchanged: '#888'
-          },
-          borderColor: {
-            up:        GREEN,
-            down:      RED,
-            unchanged: '#888'
-          },
-          backgroundColor: {
-            up:        'rgba(52,199,89,0.65)',
-            down:      'rgba(255,59,48,0.65)',
-            unchanged: 'rgba(136,136,136,0.6)'
-          }
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        animation: { duration: 250 },
-        interaction: { mode: 'index', intersect: false },
-        plugins: {
-          legend: { display: false },
-          tooltip: {
-            backgroundColor: 'rgba(28,28,30,0.95)',
-            titleColor: TEXT3,
-            bodyColor: '#fff',
-            borderColor: 'rgba(255,255,255,0.12)',
-            borderWidth: 1,
-            padding: 10,
-            callbacks: {
-              title: items => {
-                const ts = items[0]?.raw?.x;
-                if (!ts) return '';
-                return luxon.DateTime.fromMillis(ts).toFormat('yyyy/MM/dd');
-              },
-              label: item => {
-                const d = item.raw;
-                return [
-                  `始値: ${fmtPrice(d.o)}`,
-                  `高値: ${fmtPrice(d.h)}`,
-                  `安値: ${fmtPrice(d.l)}`,
-                  `終値: ${fmtPrice(d.c)}`
-                ];
-              }
-            }
-          }
-        },
-        scales: {
-          x: {
-            type: 'time',
-            time: {
-              unit: timeUnit(currentPeriod),
-              displayFormats: { day: 'M/d', week: 'M/d', month: 'yy/M' },
-              tooltipFormat: 'yyyy/MM/dd'
-            },
-            ticks: { color: TEXT3, maxTicksLimit: 6, font: { size: 11 } },
-            grid: { color: GRID }
-          },
-          y: {
-            position: 'right',
-            ticks: {
-              color: TEXT3,
-              font: { size: 11 },
-              callback: v => '¥' + v.toLocaleString('ja-JP')
-            },
-            grid: { color: GRID }
-          }
+    if (!hasRecent) {
+      // 3. Fetch from J-Quants
+      const fetchFrom = quotes.length > 0 ? to : from;
+      const rawQuotes = await fetchJQuants(normalizedCode, fetchFrom, to);
+
+      if (rawQuotes.length > 0) {
+        const rows = transformRows(rawQuotes, normalizedCode);
+
+        // 4. Save to Supabase
+        await upsertCache(rows);
+
+        // 5. Re-query to get full ordered data for the requested period
+        quotes = await queryCache(normalizedCode, from, to);
+
+        // Fallback: if re-query returns nothing, use freshly fetched rows
+        if (!quotes.length) {
+          quotes = rows.filter(r => r.date >= from && r.date <= to);
         }
       }
-    });
-  }
-
-  // ── Volume chart ──────────────────────────────────────────────
-  function buildVolumeChart(quotes) {
-    const ctx = $('volumeChart');
-    if (volumeChart) { volumeChart.destroy(); volumeChart = null; }
-
-    volumeChart = new Chart(ctx, {
-      type: 'bar',
-      data: {
-        datasets: [{
-          data: quotes.map(q => ({ x: new Date(q.date).getTime(), y: +q.volume })),
-          backgroundColor: quotes.map(q =>
-            +q.close >= +q.open
-              ? 'rgba(52,199,89,0.5)'
-              : 'rgba(255,59,48,0.5)'
-          ),
-          borderWidth: 0,
-          barPercentage: 0.85
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        animation: { duration: 250 },
-        plugins: {
-          legend: { display: false },
-          tooltip: {
-            backgroundColor: 'rgba(28,28,30,0.95)',
-            titleColor: TEXT3,
-            bodyColor: '#fff',
-            borderColor: 'rgba(255,255,255,0.12)',
-            borderWidth: 1,
-            callbacks: {
-              title: items => {
-                const ts = items[0]?.raw?.x;
-                return ts ? luxon.DateTime.fromMillis(ts).toFormat('yyyy/MM/dd') : '';
-              },
-              label: item => `出来高: ${fmtVolume(item.raw.y)}`
-            }
-          }
-        },
-        scales: {
-          x: {
-            type: 'time',
-            time: {
-              unit: timeUnit(currentPeriod),
-              displayFormats: { day: 'M/d', week: 'M/d', month: 'yy/M' }
-            },
-            ticks: { display: false },
-            grid: { display: false }
-          },
-          y: {
-            position: 'right',
-            ticks: {
-              color: TEXT3,
-              font: { size: 10 },
-              maxTicksLimit: 3,
-              callback: v => fmtVolume(v)
-            },
-            grid: { color: GRID }
-          }
-        }
-      }
-    });
-  }
-
-  // ── Stats update ──────────────────────────────────────────────
-  function updateStats(quotes, code, name) {
-    if (!quotes.length) return;
-
-    const latest = quotes[quotes.length - 1];
-    const first  = quotes[0];
-    const allHigh = Math.max(...quotes.map(q => +q.high));
-    const allLow  = Math.min(...quotes.map(q => +q.low));
-    const totalVol = quotes.reduce((s, q) => s + (+q.volume || 0), 0);
-
-    $('stockName').textContent    = name || `銘柄 ${code}`;
-    $('stockCodeBadge').textContent = code;
-    $('currentPrice').textContent = fmtPrice(latest.close);
-
-    const change    = +latest.close - +first.open;
-    const changePct = first.open ? ((change / +first.open) * 100).toFixed(2) : '0.00';
-    const sign      = change >= 0 ? '+' : '';
-    const changeEl  = $('priceChange');
-    changeEl.textContent = `${sign}${fmtPrice(Math.abs(change))} (${sign}${changePct}%)`;
-    changeEl.className   = 'price-change ' + (change > 0 ? 'up' : change < 0 ? 'down' : 'flat');
-
-    $('statOpen').textContent   = fmtPrice(first.open);
-    $('statClose').textContent  = fmtPrice(latest.close);
-    $('statHigh').textContent   = fmtPrice(allHigh);
-    $('statLow').textContent    = fmtPrice(allLow);
-    $('statVolume').textContent = fmtVolume(totalVol);
-    $('statDays').textContent   = `${quotes.length}日`;
-  }
-
-  // ── Data fetch ────────────────────────────────────────────────
-  async function fetchStock(code, period) {
-    const res = await fetch(`/api/stock?code=${encodeURIComponent(code)}&period=${encodeURIComponent(period)}`);
-    const json = await res.json();
-    if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`);
-    return json;
-  }
-
-  async function loadStock(code, period) {
-    code = code.trim();
-    if (!code) return;
-
-    setState('loading');
-    try {
-      const data   = await fetchStock(code, period);
-      const quotes = data.quotes || [];
-
-      if (!quotes.length) {
-        throw new Error('データが見つかりません。銘柄コードを確認してください。');
-      }
-
-      currentCode = code;
-      setState('stock');
-      updateStats(quotes, code, data.name);
-      buildPriceChart(quotes);
-      buildVolumeChart(quotes);
-    } catch (e) {
-      $('error').textContent = e.message;
-      setState('error');
     }
+
+    const name = await fetchCompanyName(normalizedCode).catch(() => null);
+    return res.status(200).json({ quotes, name });
+
+  } catch (err) {
+    console.error('stock API error:', err);
+    return res.status(500).json({ error: err.message || 'サーバーエラーが発生しました' });
   }
-
-  // ── Event listeners ───────────────────────────────────────────
-  $('searchBtn').addEventListener('click', () => {
-    loadStock($('codeInput').value, currentPeriod);
-  });
-
-  $('codeInput').addEventListener('keydown', e => {
-    if (e.key === 'Enter') loadStock($('codeInput').value, currentPeriod);
-  });
-
-  document.querySelectorAll('.period-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      currentPeriod = btn.dataset.period;
-      if (currentCode) loadStock(currentCode, currentPeriod);
-    });
-  });
-
-  document.querySelectorAll('.example-chip').forEach(chip => {
-    chip.addEventListener('click', () => {
-      const code = chip.dataset.code;
-      $('codeInput').value = code;
-      loadStock(code, currentPeriod);
-    });
-  });
-
-  // ── Init ──────────────────────────────────────────────────────
-  setState('welcome');
-</script>
-</body>
-</html>
+};
