@@ -11,10 +11,10 @@ async function fetchJQuants(code, from, to) {
   const apiKey = process.env.JQUANTS_API_KEY;
   if (!apiKey) throw new Error('JQUANTS_API_KEY が設定されていません');
 
-  const url = `https://api.jquants.com/v1/prices/daily_quotes?code=${code}&from=${from}&to=${to}`;
+  const url = `https://api.jquants.com/v2/equities/bars/daily?code=${code}&from=${from}&to=${to}`;
 
   const res = await fetch(url, {
-    headers: { Authorization: `Bearer ${apiKey}` }
+    headers: { 'x-api-key': apiKey }
   });
 
   if (!res.ok) {
@@ -23,7 +23,8 @@ async function fetchJQuants(code, from, to) {
   }
 
   const data = await res.json();
-  return data.daily_quotes || [];
+  // v2 レスポンスキーは bars、フォールバックで daily_quotes も確認
+  return data.bars || data.daily_quotes || [];
 }
 
 // ── Date helpers ──────────────────────────────────────────────
@@ -75,12 +76,12 @@ async function upsertCache(rows) {
 function transformRows(rawQuotes, code) {
   return rawQuotes.map(q => ({
     code:   code,
-    date:   q.Date,
-    open:   q.Open,
-    high:   q.High,
-    low:    q.Low,
-    close:  q.Close,
-    volume: q.Volume
+    date:   q.date   ?? q.Date,
+    open:   q.open   ?? q.Open,
+    high:   q.high   ?? q.High,
+    low:    q.low    ?? q.Low,
+    close:  q.close  ?? q.Close,
+    volume: q.volume ?? q.Volume
   }));
 }
 
