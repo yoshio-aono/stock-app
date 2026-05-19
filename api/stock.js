@@ -23,12 +23,7 @@ async function fetchJQuants(code, from, to) {
   }
 
   const data = await res.json();
-  console.log('[fetchJQuants] from:', from, 'to:', to);
-  console.log('[fetchJQuants] data keys:', Object.keys(data));
-  console.log('[fetchJQuants] data.bars:', JSON.stringify(data.bars?.slice(0, 3)));
-  console.log('[fetchJQuants] full data:', JSON.stringify(data).slice(0, 500));
-  // v2 レスポンスキーは bars、フォールバックで daily_quotes も確認
-  return data.bars || data.daily_quotes || [];
+  return data.data || [];
 }
 
 // ── Date helpers ──────────────────────────────────────────────
@@ -75,12 +70,12 @@ async function upsertCache(rows) {
 function transformRows(rawQuotes, code) {
   return rawQuotes.map(q => ({
     code:   code,
-    date:   q.date   ?? q.Date,
-    open:   q.open   ?? q.Open,
-    high:   q.high   ?? q.High,
-    low:    q.low    ?? q.Low,
-    close:  q.close  ?? q.Close,
-    volume: q.volume ?? q.Volume
+    date:   q.Date,
+    open:   q.AdjO,
+    high:   q.AdjH,
+    low:    q.AdjL,
+    close:  q.AdjC,
+    volume: q.AdjVo
   }));
 }
 
