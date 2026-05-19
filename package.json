@@ -1,9 +1,8 @@
 {
-  "version": 2,
-  "functions": {
-    "api/*.js": {
-      "memory": 512,
-      "maxDuration": 30
-    }
+  "name": "stock-app",
+  "version": "1.0.0",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.0.0",
+    "node-fetch": "^2.6.9"
   }
 }
