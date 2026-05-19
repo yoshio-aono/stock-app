@@ -35,8 +35,12 @@ async function fetchCompanyName(code) {
   );
   if (!res.ok) return null;
   const data = await res.json();
-  const info = (data.info || data.data || [])[0];
-  return info?.CompanyName ?? info?.Name ?? null;
+  
+  // デバッグ用ログ
+  console.log('company name raw:', JSON.stringify(data).substring(0, 300));
+  
+  const info = (data.info || data.data || data.items || [])[0];
+  return info?.CompanyName ?? info?.Name ?? info?.company_name ?? info?.name ?? null;
 }
 
 // ── Date helpers ──────────────────────────────────────────────
