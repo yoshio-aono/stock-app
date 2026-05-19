@@ -1,3 +1,6 @@
+現在の [index.html](index.html) の内容です。
+
+```html
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -84,6 +87,18 @@
       cursor: pointer;
       padding: 8px 0;
       min-width: 36px;
+    }
+
+    .back-btn {
+      background: none;
+      border: none;
+      color: var(--text3);
+      font-size: 17px;
+      font-weight: 500;
+      cursor: pointer;
+      padding: 8px 0;
+      min-width: 36px;
+      white-space: nowrap;
     }
 
     /* ── Welcome ── */
@@ -304,6 +319,7 @@
       >
     </div>
     <button class="search-btn" id="searchBtn">検索</button>
+    <button class="back-btn hidden" id="backBtn">戻る</button>
   </div>
 
   <!-- Welcome -->
@@ -316,6 +332,12 @@
       <span class="example-chip" data-code="6758">6758 ソニー</span>
       <span class="example-chip" data-code="9984">9984 ソフトバンクG</span>
       <span class="example-chip" data-code="7974">7974 任天堂</span>
+      <span class="example-chip" data-code="6861">6861 キーエンス</span>
+      <span class="example-chip" data-code="8035">8035 東京エレクトロン</span>
+      <span class="example-chip" data-code="6367">6367 ダイキン</span>
+      <span class="example-chip" data-code="9433">9433 KDDI</span>
+      <span class="example-chip" data-code="8316">8316 三井住友FG</span>
+      <span class="example-chip" data-code="4063">4063 信越化学</span>
     </div>
   </div>
 
@@ -428,14 +450,11 @@
 
   // ── UI State ─────────────────────────────────────────────────
   function setState(state) {
-    ['welcome', 'loading', 'error', 'stockContent'].forEach(id => {
-      $(id).classList.toggle('hidden', id !== state.replace('stock', 'stockContent') && id !== state);
-    });
-    // Simpler explicit toggle
     $('welcome').classList.toggle('hidden',      state !== 'welcome');
     $('loading').classList.toggle('hidden',      state !== 'loading');
     $('error').classList.toggle('hidden',        state !== 'error');
     $('stockContent').classList.toggle('hidden', state !== 'stock');
+    $('backBtn').classList.toggle('hidden',      state === 'welcome');
   }
 
   // ── Time unit per period ─────────────────────────────────────
@@ -527,7 +546,7 @@
             ticks: {
               color: TEXT3,
               font: { size: 11 },
-              callback: v => '¥' + v.toLocaleString('ja-JP')
+              callback: v => v.toLocaleString('ja-JP')
             },
             grid: { color: GRID }
           }
@@ -611,9 +630,9 @@
     const allLow  = Math.min(...quotes.map(q => +q.low));
     const totalVol = quotes.reduce((s, q) => s + (+q.volume || 0), 0);
 
-    $('stockName').textContent    = name || `銘柄 ${code}`;
+    $('stockName').textContent      = name || `銘柄 ${code}`;
     $('stockCodeBadge').textContent = code;
-    $('currentPrice').textContent = fmtPrice(latest.close);
+    $('currentPrice').textContent   = fmtPrice(latest.close);
 
     const change    = +latest.close - +first.open;
     const changePct = first.open ? ((change / +first.open) * 100).toFixed(2) : '0.00';
@@ -671,6 +690,12 @@
     if (e.key === 'Enter') loadStock($('codeInput').value, currentPeriod);
   });
 
+  $('backBtn').addEventListener('click', () => {
+    $('codeInput').value = '';
+    currentCode = null;
+    setState('welcome');
+  });
+
   document.querySelectorAll('.period-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
@@ -693,3 +718,4 @@
 </script>
 </body>
 </html>
+```
