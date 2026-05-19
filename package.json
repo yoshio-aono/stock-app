@@ -1,0 +1,12 @@
+{
+  "name": "stock-app",
+  "version": "1.0.0",
+  "private": true,
+  "description": "日本株 株価チャートアプリ",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.39.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
