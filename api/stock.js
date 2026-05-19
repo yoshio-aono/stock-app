@@ -6,59 +6,15 @@ const supabase = createClient(
   process.env.SUPABASE_KEY
 );
 
-// In-memory token cache (reused across warm invocations)
-let cachedIdToken  = null;
-let idTokenExpiry  = 0;
-
-// ── J-Quants authentication ────────────────────────────────────
-async function getIdToken() {
-  if (cachedIdToken && Date.now() < idTokenExpiry) return cachedIdToken;
-
-  // Step 1: exchange email/password → refreshToken
-  const authRes = await fetch('https://api.jquants.com/v1/token/auth_user', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      mailaddress: process.env.JQUANTS_EMAIL,
-      password:    process.env.JQUANTS_PASSWORD
-    })
-  });
-
-  if (!authRes.ok) {
-    const body = await authRes.text();
-    throw new Error(`J-Quants認証失敗 (${authRes.status}): ${body}`);
-  }
-
-  const { refreshToken } = await authRes.json();
-  if (!refreshToken) throw new Error('refreshToken が取得できませんでした');
-
-  // Step 2: exchange refreshToken → idToken
-  const idRes = await fetch(
-    `https://api.jquants.com/v1/token/auth_refresh?refreshToken=${encodeURIComponent(refreshToken)}`,
-    { method: 'POST' }
-  );
-
-  if (!idRes.ok) {
-    const body = await idRes.text();
-    throw new Error(`IDトークン取得失敗 (${idRes.status}): ${body}`);
-  }
-
-  const { idToken } = await idRes.json();
-  if (!idToken) throw new Error('idToken が取得できませんでした');
-
-  cachedIdToken = idToken;
-  idTokenExpiry = Date.now() + 22 * 60 * 60 * 1000; // 22 hours (token valid 24h)
-
-  return idToken;
-}
-
 // ── J-Quants price fetch ──────────────────────────────────────
 async function fetchJQuants(code, from, to) {
-  const token = await getIdToken();
-  const url   = `https://api.jquants.com/v1/prices/daily_quotes?code=${code}&from=${from}&to=${to}`;
+  const apiKey = process.env.JQUANTS_API_KEY;
+  if (!apiKey) throw new Error('JQUANTS_API_KEY が設定されていません');
+
+  const url = `https://api.jquants.com/v1/prices/daily_quotes?code=${code}&from=${from}&to=${to}`;
 
   const res = await fetch(url, {
-    headers: { Authorization: `Bearer ${token}` }
+    headers: { Authorization: `Bearer ${apiKey}` }
   });
 
   if (!res.ok) {
