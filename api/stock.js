@@ -28,26 +28,21 @@ async function fetchJQuants(code, from, to) {
 }
 
 // ── Date helpers ──────────────────────────────────────────────
+// J-Quants Free プラン制限：直近12週間は取得不可
+// to = 今日から91日前（13週前）、from = to から period 分遡る
 function getPeriodDates(period) {
-  const daysMap = { '1w': 10, '1m': 35, '3m': 95, '1y': 370 };
-  const days    = daysMap[period] || 35;
-
-  const to   = new Date();
-  const from = new Date();
-  from.setDate(from.getDate() - days);
+  const periodDaysMap = { '1w': 7, '1m': 30, '3m': 90, '1y': 365 };
+  const periodDays    = periodDaysMap[period] || 30;
 
   const fmt = d => d.toISOString().split('T')[0];
+
+  const to = new Date();
+  to.setDate(to.getDate() - 91);       // 今日から13週前
+
+  const from = new Date(to);
+  from.setDate(from.getDate() - periodDays);
+
   return { from: fmt(from), to: fmt(to) };
-}
-
-function isoToday() {
-  return new Date().toISOString().split('T')[0];
-}
-
-function isoYesterday() {
-  const d = new Date();
-  d.setDate(d.getDate() - 1);
-  return d.toISOString().split('T')[0];
 }
 
 // ── Supabase cache helpers ────────────────────────────────────
@@ -111,14 +106,14 @@ module.exports = async (req, res) => {
     // 1. Check Supabase cache
     let quotes = await queryCache(normalizedCode, from, to);
 
-    // 2. Determine if cache is fresh (contains today or yesterday data)
-    const today     = isoToday();
-    const yesterday = isoYesterday();
-    const hasRecent = quotes.some(r => r.date >= yesterday);
+    // 2. キャッシュが to 日付付近まであるか確認（3日以内を許容）
+    const toMinus3 = new Date(to);
+    toMinus3.setDate(toMinus3.getDate() - 3);
+    const hasRecent = quotes.some(r => r.date >= toMinus3.toISOString().split('T')[0]);
 
     if (!hasRecent) {
       // 3. Fetch from J-Quants
-      const fetchFrom = quotes.length > 0 ? yesterday : from;
+      const fetchFrom = quotes.length > 0 ? to : from;
       const rawQuotes = await fetchJQuants(normalizedCode, fetchFrom, to);
 
       if (rawQuotes.length > 0) {
