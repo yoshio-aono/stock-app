@@ -40,7 +40,7 @@ async function fetchCompanyName(code) {
   console.log('company name raw:', JSON.stringify(data).substring(0, 300));
   
   const info = (data.info || data.data || data.items || [])[0];
-  return info?.CompanyName ?? info?.Name ?? info?.company_name ?? info?.name ?? null;
+  return info?.CoName ?? null;
 }
 
 // ── Date helpers ──────────────────────────────────────────────
