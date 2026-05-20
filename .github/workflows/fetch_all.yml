@@ -22,7 +22,7 @@ jobs:
 
       # 必要なパッケージをインストール
       - name: パッケージをインストール
-        run: npm install dotenv @supabase/supabase-js
+        run: npm install dotenv @supabase/supabase-js ws
 
       # 一括取得スクリプトを実行
       - name: 株価データを一括取得
