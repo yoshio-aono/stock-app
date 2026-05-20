@@ -1,0 +1,33 @@
+name: 日経225 一括データ取得
+
+on:
+  # 手動実行ボタンで起動できるようにする
+  workflow_dispatch:
+
+jobs:
+  fetch-all-stocks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      # リポジトリのコードをチェックアウト
+      - name: リポジトリをチェックアウト
+        uses: actions/checkout@v4
+
+      # Node.js をセットアップ
+      - name: Node.js をセットアップ
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # 必要なパッケージをインストール
+      - name: パッケージをインストール
+        run: npm install dotenv @supabase/supabase-js
+
+      # 一括取得スクリプトを実行
+      - name: 株価データを一括取得
+        run: node scripts/fetch_all.js
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          JQUANTS_API_KEY: ${{ secrets.JQUANTS_API_KEY }}
