@@ -23,7 +23,7 @@ const supabase = createClient(
 );
 
 // ── 設定 ─────────────────────────────────────────────────────
-const SLEEP_MS        = 1200;  // 銘柄間の待機時間（ms）APIレート制限対策
+const SLEEP_MS        = 500;  // 銘柄間の待機時間（ms）APIレート制限対策
 const BATCH_SIZE      = 50;    // Supabaseへの1回のupsert件数
 const RETRY_MAX       = 3;     // 失敗時のリトライ回数
 const RETRY_SLEEP_MS  = 5000;  // リトライ前の待機時間（ms）
