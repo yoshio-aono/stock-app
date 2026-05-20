@@ -7,7 +7,7 @@ on:
 jobs:
   fetch-all-stocks:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 60
 
     steps:
       # リポジトリのコードをチェックアウト
