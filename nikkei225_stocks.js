@@ -1,4 +1,4 @@
-javascript
+
   const NIKKEI225_STOCKS = [
   { code: "7203", name: "トヨタ自動車" },
   { code: "6758", name: "ソニーグループ" },
