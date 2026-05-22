@@ -36,10 +36,10 @@ function getDateRange() {
   const fmt = d => d.toISOString().split('T')[0];
 
   const to = new Date();
-  to.setDate(to.getDate() - 91);       // 13週前
+  to.setDate(to.getDate() - 84);       // 13週前
 
   const from = new Date(to);
-  from.setDate(from.getDate() - 730);  // さらに2年前
+  from.setDate(from.getDate() - 700);  // さらに2年前
 
   return { from: fmt(from), to: fmt(to) };
 }
