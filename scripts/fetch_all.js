@@ -26,7 +26,7 @@ const supabase = createClient(
 const SLEEP_MS        = 500;  // 銘柄間の待機時間（ms）APIレート制限対策
 const BATCH_SIZE      = 50;    // Supabaseへの1回のupsert件数
 const RETRY_MAX       = 3;     // 失敗時のリトライ回数
-const RETRY_SLEEP_MS  = 5000;  // リトライ前の待機時間（ms）
+const RETRY_SLEEP_MS  = 30000;  // リトライ前の待機時間（ms）
 
 // ── 取得期間の計算 ────────────────────────────────────────────
 // J-Quants無料プラン：直近12週間は取得不可
